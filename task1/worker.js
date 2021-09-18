@@ -10,17 +10,26 @@ amqp = require('amqplib');
         const connection = await amqp.connect('amqp://localhost');
         const channel = await connection.createChannel();
 
+        await channel.assertQueue('from_worker', { durable: false });
+
         await channel.assertExchange('to_worker', 'fanout', { durable: false });
-        let q = await channel.assertQueue('', { exclusive: true });
+        const q = await channel.assertQueue('', { exclusive: true });
         channel.bindQueue(q.queue, 'to_worker', '');
 
         channel.consume(
             q.queue,
             msg => { 
-                console.log(" [x] Received: %s", msg.content.toString()); 
-                channel.sendToQueue(msg.properties.replyTo, Buffer.from(number));
-            }, 
-            { noAck: true }
+                console.log(" [x] Received: %s", msg.content);
+                channel.ack(msg);
+
+                console.log(msg.properties)
+
+                channel.sendToQueue(
+                    "from_worker", 
+                    Buffer.from(number),
+                    { replyTo: msg.properties.replyTo}
+                );
+            }
         );
 
     } catch (err) {

@@ -2,35 +2,58 @@ amqp = require('amqplib');
 
 (async () => {
     try {
-        let args = process.argv.slice(2);
-        let letter = args[0];
-
-        console.log('*** Broadcasting letter: ' + letter + '   ***\n');
+        const args = process.argv.slice(2);
+        const workerNum = args[0];
 
         const connection = await amqp.connect('amqp://localhost');
         const channel = await connection.createChannel();
 
-        const q = await channel.assertQueue('', { durable: true });
-        channel.consume(
-            q.queue, 
-            msg => { console.log(" [x] Master received: %s", msg.content.toString()); }, 
-            { noAck: true }
-        );
-      
+        await channel.assertQueue('rpc_queue', { durable: false });
+        await channel.assertQueue('from_worker', { durable: false });
         await channel.assertExchange('to_worker', 'fanout', { durable: false });
-        channel.publish(
-            'to_worker', 
-            '', 
-            Buffer.from(letter), 
-            { replyTo: q.queue }
+
+        let roads = [];
+
+        channel.consume(
+            'from_worker', 
+            workerMsg => { 
+                console.log(" [x] Master received: %s", workerMsg.content.toString());
+                console.log("Current array: " + roads + "\n");
+                channel.ack(workerMsg);
+
+                roads.push(workerMsg.content.toString());
+
+                if (roads.length == workerNum) {
+                    const json = JSON.stringify(roads);
+                    console.log("Sending to client " + json);
+
+                    channel.sendToQueue(
+                        workerMsg.properties.replyTo,
+                        Buffer.from(json)
+                    );
+
+                    roads = [];
+                }
+
+            }
         );
 
-        console.log(' [x] Sent ' + letter + ' from master');
-      
-        // setTimeout(() => {
-        //     connection.close();
-        //     process.exit(0);
-        // }, 500);
+        channel.consume(
+            'rpc_queue',
+            async (clientMsg) => {
+                let letter = clientMsg.content.toString();
+                channel.ack(clientMsg);
+
+                console.log('*** Broadcasting letter: ' + letter + '   ***\n');
+
+                channel.publish(
+                    'to_worker', 
+                    '', 
+                    Buffer.from(letter), 
+                    { replyTo: clientMsg.properties.replyTo }
+                );
+            }
+        );
 
     } catch (err) {
         console.log(err);
