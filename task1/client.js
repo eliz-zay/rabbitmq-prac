@@ -9,13 +9,16 @@ amqp = require('amqplib');
         const channel = await connection.createChannel();
 
         const q = await channel.assertQueue('', { exclusive: true });
+        await channel.assertQueue('rpc_queue', { durable: true });
 
         channel.consume(
             q.queue,
             msg => {
-                console.log(' [x] Client recieved');
-                console.log(msg.content.toString());
                 channel.ack(msg);
+
+                console.log(' [x] Client recieved');
+                const content = JSON.parse(msg.content).map(item => JSON.parse(item))
+                console.log(content)
             }
         );
 
