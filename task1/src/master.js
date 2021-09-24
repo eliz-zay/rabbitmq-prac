@@ -22,15 +22,14 @@ function initWorkers(workerNum, cities) {
 
 (async () => {
     try {
-        const args = process.argv.slice(2);
-        const workerNum = args[0];
-
         const clientRoads = new Map();
         const cityFiles = [
             'data/nyc.xml', 
             'data/philadelphia.xml',
             'data/las_vegas.xml'
         ];
+
+        const workerNum = cityFiles.length;
 
         if (workerNum != parseInt(workerNum, 10)) {
             console.log(`\n${workerNum} is not an integer\n`);
@@ -50,9 +49,10 @@ function initWorkers(workerNum, cities) {
         const connection = await amqp.connect('amqp://localhost');
         const channel = await connection.createChannel();
 
-        await channel.assertQueue('rpc_queue');
         await channel.assertQueue('from_worker');
         await channel.assertExchange('to_worker', 'fanout');
+
+        await channel.assertQueue('rpc_queue');
 
         channel.consume(
             'from_worker', 

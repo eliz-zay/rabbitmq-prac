@@ -55,7 +55,7 @@ async function parseOSM(file, firstLetter = null) {
                     channel.sendToQueue(
                         "from_worker", 
                         Buffer.from(response),
-                        { replyTo: msg.properties.replyTo}
+                        { replyTo: msg.properties.replyTo }
                     );
 
                 } catch (err) {

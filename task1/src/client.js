@@ -17,6 +17,12 @@ function isLetter(str) {
         const connection = await amqp.connect('amqp://localhost');
         const channel = await connection.createChannel();
 
+        check = await channel.checkQueue('rpc_queue');
+        if (!check.consumerCount) {
+            console.log('Server error!');
+            process.exit(0);
+        }
+
         const queueFromMaster = await channel.assertQueue('', { exclusive: true });
         await channel.assertQueue('rpc_queue');
 
@@ -31,22 +37,30 @@ function isLetter(str) {
 
                 if (JSON.parse(msg.content.toString()).isError) {
                     console.log("Server error!")
-                    return;
+                    process.exit(0)
                 }
 
                 const content = JSON.parse(msg.content).map(item => 
                     item == '' ? null : JSON.parse(item)
                 );
 
+                isData = false;
                 content.forEach(item => {
                     if (!item) {
                         return;
                     }
+                    isData = true;
                     console.log(` * ${item.city} * `);
                     console.log(`Number of roads: ${item.roadCount}`);
                     item.roads.forEach(road => console.log(`- ${road}`));
                     console.log('\n')
-                })
+                });
+
+                if (!isData) {
+                    console.log('No data')
+                }
+
+                process.exit(0)
             }
         );
 
