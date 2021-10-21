@@ -1,0 +1,6 @@
+{
+    "baseLatencyMs": 500,
+    "sailorPeriodMs": 3000,
+    "maxFriendsNum": 3,
+    "latencyDistrib": [1,2,1,1,1]
+}
