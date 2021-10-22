@@ -11,7 +11,7 @@ function run() {
     for (let i = 0; i < len; ++i) {
         const child = spawn(process.argv[0], ['src/friend.js', i, latencyDistrib[i]]);
 
-        console.log(`friend #${i} - latency ${latencyDistrib[i] * baseLatencyMs}`);
+        console.log(`friend #${i} - latency ${latencyDistrib[i] * baseLatencyMs} ms`);
 
         child.stdout.on('data', (data) => {
             console.log(`friend #${i}: ${data.slice(0, -1)}`);

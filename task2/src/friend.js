@@ -16,6 +16,7 @@ async function run() {
         const latency = args[1] * baseLatencyMs;
 
         let hasMsgFromFriend = false;
+        let msgTime = undefined;
 
         const connection = await amqp.connect('amqp://localhost');
         const channel = await connection.createChannel();
@@ -35,6 +36,7 @@ async function run() {
             async msg => {
                 channel.ack(msg);
                 hasMsgFromFriend = true;
+                msgTime = new Date();
 
                 const jsonMsg = JSON.parse(msg.content.toString());
 
@@ -54,7 +56,14 @@ async function run() {
 
                     await sleep(latency);
 
-                    if (!hasMsgFromFriend) {
+                    const now = new Date();
+                    const timeDiff = hasMsgFromFriend ? (now.getTime() - msgTime.getTime()) : undefined;
+
+                    if (hasMsgFromFriend) {
+                        console.log(`time diff: ${timeDiff}`);
+                    }
+
+                    if (!hasMsgFromFriend || timeDiff < baseLatencyMs / 10) {
                         console.log(` *** i send ***`);
                         channel.publish(
                             'among_friends',
