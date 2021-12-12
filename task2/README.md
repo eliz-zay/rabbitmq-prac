@@ -1,4 +1,4 @@
-# RabbitMQ Task 1
+# RabbitMQ Task 2
 
 ## Run
 
