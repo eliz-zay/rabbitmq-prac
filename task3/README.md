@@ -2,7 +2,8 @@
 
 ## Run
 
-    
+`nodemon src/genSailors.js`   
+`nodemon src/simulator.js`   
 
 ## Author
 

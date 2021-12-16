@@ -2,8 +2,7 @@ const amqp = require('amqplib');
 
 const config = require('../config.json');
 
-const baseLatencyMs = config.baseLatencyMs;
-const sailorsNum = config.sailorsNum;
+const { baseLatencyMs, sailorsNum } = config;
 
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -43,9 +42,13 @@ function bcastForecast(procId, msg, clock, channel) {
 }
 
 function processMsgs(msg, msgQueue, sortedMsgs, id, clock, channel) {
+    if (id === msg.sender) {
+        return { msgQueue, sortedMsgs, clock };
+    }
+
     if (!clockIsValid(msg, clock)) {
         msgQueue.add(msg);
-        return { msgQueue, sortedMsgs };
+        return { msgQueue, sortedMsgs, clock };
     }
 
     sortedMsgs.push(msg);
@@ -62,19 +65,19 @@ function processMsgs(msg, msgQueue, sortedMsgs, id, clock, channel) {
         msgQueue.forEach(m => {
             if (clockIsValid(m, clock)) {
                 success = true;
-                msgQueue.pop(m);
+                msgQueue.delete(m);
                 sortedMsgs.push(m);
                 clock = updateClock(m.clock, clock);
 
-                if (msg.isRequest) {
+                if (m.isRequest) {
                     ++clock[id];
-                    bcastForecast(id, msg, clock, channel);
+                    bcastForecast(id, m, clock, channel);
                 }
             }
         });
     }
 
-    return { msgQueue, sortedMsgs };
+    return { msgQueue, sortedMsgs, clock };
 }
 
 async function run() {
@@ -82,11 +85,13 @@ async function run() {
         const args = process.argv.slice(2);
         const id = +args[0];
         const latency = (id + 1) * baseLatencyMs;
+        const totalMsgCount = sailorsNum * (sailorsNum - 1);
 
         let clock = new Array(sailorsNum).fill(0);
         let sortedMsgs = [];
-        const rcvOrderMsgs = [];
+        let rcvOrderMsgs = [];
         let msgQueue = new Set();
+        const rcvStates = []; // массив объектов { msg, clock }
 
         const connection = await amqp.connect('amqp://localhost');
         const channel = await connection.createChannel();
@@ -105,7 +110,20 @@ async function run() {
                 const msg = JSON.parse(rawMsg.content.toString());
 
                 rcvOrderMsgs.push(msg);
-                ({ msgQueue, sortedMsgs } = processMsgs(msg, msgQueue, sortedMsgs, id, clock, channel));
+                rcvStates.push({ msg, clock });
+
+                ({ msgQueue, sortedMsgs, clock } = processMsgs(msg, msgQueue, sortedMsgs, id, clock, channel));
+
+                if (sortedMsgs.length === totalMsgCount) {
+                    setTimeout(() => {
+                        console.log('RECV');
+                        console.dir(rcvStates, { depth: null });
+                        console.log('PROCESSED');
+                        console.log(sortedMsgs);
+                        console.log(`Finish...`);
+                        process.exit(0);
+                    }, 0);
+                } 
             }
         );
 
