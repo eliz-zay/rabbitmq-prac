@@ -42,10 +42,6 @@ function bcastForecast(procId, msg, clock, channel) {
 }
 
 function processMsgs(msg, msgQueue, sortedMsgs, id, clock, channel) {
-    if (id === msg.sender) {
-        return { msgQueue, sortedMsgs, clock };
-    }
-
     if (!clockIsValid(msg, clock)) {
         msgQueue.add(msg);
         return { msgQueue, sortedMsgs, clock };
@@ -89,7 +85,6 @@ async function run() {
 
         let clock = new Array(sailorsNum).fill(0);
         let sortedMsgs = [];
-        let rcvOrderMsgs = [];
         let msgQueue = new Set();
         const rcvStates = []; // массив объектов { msg, clock }
 
@@ -109,7 +104,10 @@ async function run() {
 
                 const msg = JSON.parse(rawMsg.content.toString());
 
-                rcvOrderMsgs.push(msg);
+                if (msg.sender === id) {
+                    return;
+                }
+
                 rcvStates.push({ msg, clock });
 
                 ({ msgQueue, sortedMsgs, clock } = processMsgs(msg, msgQueue, sortedMsgs, id, clock, channel));

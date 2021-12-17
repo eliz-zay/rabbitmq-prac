@@ -2,10 +2,22 @@ const { spawn } = require('child_process');
 
 const config = require('../config');
 
-const sailorsNum = config.sailorsNum;
-const baseLatencyMs = config.baseLatencyMs;
+const {
+    sailorsNum,
+    baseLatencyMs,
+    simulatorBufferLen
+ } = config;
+
+ function parseArgs() {
+    if (sailorsNum <= 0 || baseLatencyMs <= 0 || simulatorBufferLen <= 0) {
+        console.log('Invalid args');
+        process.exit(0);
+    }
+}
 
 function run() {
+    parseArgs();
+
     for (let i = 0; i < sailorsNum; ++i) {
         const child = spawn(process.argv[0], ['src/sailor.js', i]);
 

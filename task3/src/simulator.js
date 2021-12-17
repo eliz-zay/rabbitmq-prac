@@ -4,6 +4,13 @@ const config = require('../config.json');
 
 const { simulatorBufferLen: bufferLen, sailorsNum } = config;
 
+function parseArgs() {
+    if (sailorsNum <= 0 || bufferLen <= 0) {
+        console.log('Invalid args');
+        process.exit(0);
+    }
+}
+
 function bcast(msgs, channel) {
     console.log('sending...\n');
 
@@ -21,6 +28,9 @@ async function run() {
     try {
         let msgs = [];
         let lastMsgTime;
+        let rcvCount = 0;
+
+        parseArgs();
 
         const connection = await amqp.connect('amqp://localhost');
         const channel = await connection.createChannel();
@@ -47,12 +57,23 @@ async function run() {
 
                 const msg = JSON.parse(rawMsg.content.toString())
                 msgs.push(msg);
+                ++rcvCount;
+
                 lastMsgTime = new Date();
+
                 console.log(msg);
                 
                 if (msgs.length === bufferLen) {
                     bcast(msgs, channel);
                     msgs.length = 0;
+                }
+
+                if (rcvCount === sailorsNum * sailorsNum) {
+                    setTimeout(() => {
+                        console.log('Finish...');
+                        clearInterval(timerId);
+                        process.exit(0);
+                    }, 0);
                 }
             }
         );

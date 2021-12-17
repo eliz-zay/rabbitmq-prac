@@ -1,5 +1,5 @@
 {
     "simulatorBufferLen": 4,
-    "baseLatencyMs": 1000,
+    "baseLatencyMs": 500,
     "sailorsNum": 4
 }
